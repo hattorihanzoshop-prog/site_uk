@@ -1,14 +1,13 @@
 import os
+import json
 import uuid
-from datetime import datetime
+from pathlib import Path
 from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Request, Query
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 
-app = FastAPI(title="Flow Consulting API - Mock Mode")
+app = FastAPI(title="Flow Consulting API - JSON DB Mode")
 
-# Настройка CORS для работы с фронтендом
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,75 +16,63 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- ДАННЫЕ ИЗ PRD И README ---
-# Здесь те самые 15 отчетов, которые были зашиты в инициализацию
-MOCK_REPORTS = [
-    {
-        "_id": "1",
-        "title": "Global AI in Healthcare Market 2025",
-        "industry": "Healthcare & Pharmaceuticals",
-        "category": "Market Analysis",
-        "description": "Comprehensive analysis of AI implementation in modern healthcare systems.",
-        "prices": {"single": 2800, "multi": 4500, "enterprise": 7500},
-        "featured": True,
-        "image_url": "https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=2070",
-        "key_insights": ["AI reduces diagnostics time by 40%", "Market growth at 25% CAGR"],
-        "specifications": {"format": "PDF", "pages": "180", "published": "Jan 2026"}
-    },
-    {
-        "_id": "2",
-        "title": "Fintech Revolution: Digital Banking 2026",
-        "industry": "Financial Services & Banking",
-        "category": "Strategic Outlook",
-        "description": "The shift from traditional to neobanking in emerging markets.",
-        "prices": {"single": 3200, "multi": 5200, "enterprise": 8500},
-        "featured": True,
-        "image_url": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070",
-        "key_insights": ["70% of users prefer mobile-first banking", "Blockchain security is top priority"],
-        "specifications": {"format": "PDF", "pages": "220", "published": "Feb 2026"}
-    },
-    # Можно добавить остальные 13 отчетов аналогично...
-]
+# Путь к файлу с данными
+DB_FILE = Path(__file__).parent / "db_dump.json"
 
-# Хранилище для лидов (в памяти)
-submissions = {
-    "newsletter": [],
-    "contact": [],
-    "custom_research": []
+# Глобальное хранилище данных
+db_data = {
+    "reports": [],
+    "payment_transactions": [],
+    "newsletter_signups": [],
+    "custom_research_requests": [],
+    "contact_submissions": [],
+    "sample_downloads": []
 }
 
-# --- ЭНДПОИНТЫ (MOCK ЛОГИКА) ---
+# Загрузка данных из файла при старте
+def load_db():
+    global db_data
+    if DB_FILE.exists():
+        try:
+            with open(DB_FILE, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+                # Объединяем загруженные данные с нашей структурой
+                for key in db_data:
+                    if key in loaded:
+                        db_data[key] = loaded[key]
+            print(f"Successfully loaded data from {DB_FILE}")
+        except Exception as e:
+            print(f"Error loading {DB_FILE}: {e}")
+
+load_db()
+
+# --- ЭНДПОИНТЫ ---
 
 @app.get("/api/reports")
-async def get_reports(
-    industry: Optional[str] = None,
-    search: Optional[str] = None,
-    featured: Optional[bool] = None
-):
-    results = MOCK_REPORTS
+async def get_reports(industry: Optional[str] = None, search: Optional[str] = None):
+    results = db_data["reports"]
     if industry:
-        results = [r for r in results if r["industry"] == industry]
+        results = [r for r in results if r.get("industry") == industry]
     if search:
         s = search.lower()
-        results = [r for r in results if s in r["title"].lower() or s in r["description"].lower()]
-    if featured is not None:
-        results = [r for r in results if r["featured"] == featured]
+        results = [r for r in results if s in r.get("title", "").lower() or s in r.get("description", "").lower()]
     return results
 
 @app.get("/api/reports/{report_id}")
 async def get_report(report_id: str):
-    report = next((r for r in MOCK_REPORTS if r["_id"] == report_id), None)
+    # Ищем и по 'id', и по 'report_id' (зависит от того, как в JSON)
+    report = next((r for r in db_data["reports"] if str(r.get("id")) == report_id or r.get("report_id") == report_id), None)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
     return report
 
 @app.get("/api/industries")
 async def get_industries():
-    # Автоматический подсчет кол-ва отчетов по отраслям для секции Industries
-    industries = {}
-    for r in MOCK_REPORTS:
-        industries[r["industry"]] = industries.get(r["industry"], 0) + 1
-    return [{"name": name, "count": count} for name, count in industries.items()]
+    counts = {}
+    for r in db_data["reports"]:
+        ind = r.get("industry", "Other")
+        counts[ind] = counts.get(ind, 0) + 1
+    return [{"name": name, "count": count} for name, count in counts.items()]
 
 @app.post("/api/admin/login")
 async def admin_login(data: dict):
@@ -95,19 +82,17 @@ async def admin_login(data: dict):
 
 @app.get("/api/admin/stats")
 async def get_admin_stats():
+    # Считаем статистику на основе реальных данных из файла
+    total_rev = sum(t.get("amount", 0) for t in db_data["payment_transactions"])
     return {
-        "total_reports": len(MOCK_REPORTS),
-        "total_revenue": 145200,
-        "paid_orders": 24,
-        "active_subscriptions": len(submissions["newsletter"]),
-        "research_requests": len(submissions["custom_research"])
+        "total_reports": len(db_data["reports"]),
+        "total_revenue": total_rev,
+        "paid_orders": len(db_data["payment_transactions"]),
+        "active_subscriptions": len(db_data["newsletter_signups"]),
+        "research_requests": len(db_data["custom_research_requests"])
     }
 
-# Заглушка для Stripe, чтобы не требовать ключи при просмотре
+# Остальные эндпоинты (заглушки для работы интерфейса)
 @app.post("/api/checkout")
 async def create_checkout(data: dict):
     return {"url": "/success?session_id=mock_session"}
-
-@app.get("/api/checkout/status/{session_id}")
-async def check_status(session_id: str):
-    return {"status": "paid"}
