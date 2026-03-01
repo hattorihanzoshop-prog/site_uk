@@ -43,10 +43,11 @@ load_db()
 # 2. Единственная функция логина
 @app.post("/api/admin/login")
 async def admin_login(data: dict):
-    if data.get("password") == ADMIN_PASSWORD:
+    password = data.get("password")
+    if password == ADMIN_PASSWORD:
         return {"success": True, "token": "session_active_2026"}
     raise HTTPException(status_code=401, detail="Invalid password")
-
+    
 # 3. Остальные эндпоинты
 @app.get("/api/admin/stats")
 async def get_admin_stats():
