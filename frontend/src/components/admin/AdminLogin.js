@@ -3,7 +3,7 @@ import { Lock, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = '/api';
 
 export default function AdminLogin({ onLogin }) {
   const [password, setPassword] = useState('');
