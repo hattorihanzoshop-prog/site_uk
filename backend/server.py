@@ -41,6 +41,13 @@ def load_db():
 
 load_db()
 
+@app.post("/api/admin/login")
+async def admin_login(data: dict):
+    # Проверяем пароль
+    if data.get("password") == ADMIN_PASSWORD:
+        return {"success": True, "token": "session_active_2026"}
+    print(f"DEBUG: Failed login attempt with password: {data.get('password')}")
+    raise HTTPException(status_code=401, detail="Invalid password")
 # 2. Эндпоинты API
 
 @app.get("/api/reports")
@@ -68,11 +75,6 @@ async def get_industries():
         counts[ind] = counts.get(ind, 0) + 1
     return [{"name": name, "count": count} for name, count in counts.items()]
 
-@app.post("/api/admin/login")
-async def admin_login(data: dict):
-    if data.get("password") == ADMIN_PASSWORD:
-        return {"success": True, "token": "session_active_2026"}
-    raise HTTPException(status_code=401, detail="Invalid password")
 
 @app.get("/api/admin/stats")
 async def get_admin_stats():
