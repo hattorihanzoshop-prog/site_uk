@@ -16,13 +16,18 @@
     }
   ],
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "backend/server.py"
+    { 
+      "source": "/api/(.*)", 
+      "destination": "backend/server.py" 
+    },
+    { 
+      "source": "/(.*)", 
+      "destination": "/frontend/build/$1" 
     },
     {
       "source": "/(.*)",
-      "destination": "/frontend/build/$1"
+      "destination": "/frontend/build/index.html"
     }
+  ]
   ]
 }
