@@ -1,13 +1,12 @@
 import os
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# Разрешаем запросы с фронтенда
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,23 +15,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Пароль из .env или значение по умолчанию
+# 1. Настройка безопасности и путей
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "flowadmin2025")
 DB_FILE = Path(__file__).parent / "db_dump.json"
 
-db_data = {"reports": [], "payment_transactions": [], "newsletter_signups": [], 
-           "custom_research_requests": [], "contact_submissions": [], "sample_downloads": []}
+db_data = {
+    "reports": [], 
+    "payment_transactions": [], 
+    "newsletter_signups": [], 
+    "custom_research_requests": [], 
+    "contact_submissions": [], 
+    "sample_downloads": []
+}
 
 def load_db():
     global db_data
     if DB_FILE.exists():
-        with open(DB_FILE, "r", encoding="utf-8") as f:
-            db_data.update(json.load(f))
+        try:
+            with open(DB_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                db_data.update(data)
+                print(f"DB loaded: {len(db_data['reports'])} reports found.")
+        except Exception as e:
+            print(f"Error loading JSON: {e}")
 
 load_db()
 
-# ... (остальные эндпоинты остаются прежними для работы с db_data)
-# --- ЭНДПОИНТЫ ---
+# 2. Эндпоинты API
 
 @app.get("/api/reports")
 async def get_reports(industry: Optional[str] = None, search: Optional[str] = None):
@@ -46,7 +55,6 @@ async def get_reports(industry: Optional[str] = None, search: Optional[str] = No
 
 @app.get("/api/reports/{report_id}")
 async def get_report(report_id: str):
-    # Ищем и по 'id', и по 'report_id' (зависит от того, как в JSON)
     report = next((r for r in db_data["reports"] if str(r.get("id")) == report_id or r.get("report_id") == report_id), None)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
@@ -62,13 +70,12 @@ async def get_industries():
 
 @app.post("/api/admin/login")
 async def admin_login(data: dict):
-    if data.get("password") == "flowadmin2025":
-        return {"success": True, "token": "mock_token_123"}
+    if data.get("password") == ADMIN_PASSWORD:
+        return {"success": True, "token": "session_active_2026"}
     raise HTTPException(status_code=401, detail="Invalid password")
 
 @app.get("/api/admin/stats")
 async def get_admin_stats():
-    # Считаем статистику на основе реальных данных из файла
     total_rev = sum(t.get("amount", 0) for t in db_data["payment_transactions"])
     return {
         "total_reports": len(db_data["reports"]),
@@ -78,7 +85,11 @@ async def get_admin_stats():
         "research_requests": len(db_data["custom_research_requests"])
     }
 
-# Остальные эндпоинты (заглушки для работы интерфейса)
 @app.post("/api/checkout")
 async def create_checkout(data: dict):
     return {"url": "/success?session_id=mock_session"}
+
+# Для Vercel: чтобы корень не выдавал 404
+@app.get("/")
+async def root():
+    return {"status": "ok", "message": "Flow Consulting API is running"}
