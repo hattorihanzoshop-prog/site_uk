@@ -1,4 +1,8 @@
-"rewrites": [
-  { "source": "/api/(.*)", "destination": "backend/server.py" },
-  { "source": "/(.*)", "destination": "/frontend/build/$1" }
-]
+
+{
+  "version": 2,
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/backend/server.py" },
+    { "source": "/(.*)", "destination": "/frontend/build/$1" }
+  ]
+}
