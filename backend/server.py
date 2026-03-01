@@ -92,3 +92,4 @@ async def create_checkout(data: dict):
 @app.get("/")
 async def root():
     return {"status": "ok", "admin_enabled": True}
+app = app
