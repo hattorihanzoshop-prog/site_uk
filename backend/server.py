@@ -31,13 +31,6 @@ def load_db():
 
 load_db()
 
-@app.post("/api/admin/login")
-async def admin_login(data: dict):
-    # Проверка пароля по вашей переменной
-    if data.get("password") == ADMIN_PASSWORD:
-        return {"success": True, "token": "session_active_2026"}
-    raise HTTPException(status_code=401, detail="Invalid password")
-
 # ... (остальные эндпоинты остаются прежними для работы с db_data)
 # --- ЭНДПОИНТЫ ---
 
