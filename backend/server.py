@@ -1,13 +1,13 @@
 import os
 import json
-import uuid
 from pathlib import Path
-from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Request
+from typing import Optional
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Flow Consulting API - JSON DB Mode")
+app = FastAPI()
 
+# Разрешаем запросы с фронтенда
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,36 +16,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Путь к файлу с данными
+# Пароль из .env или значение по умолчанию
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "flowadmin2025")
 DB_FILE = Path(__file__).parent / "db_dump.json"
 
-# Глобальное хранилище данных
-db_data = {
-    "reports": [],
-    "payment_transactions": [],
-    "newsletter_signups": [],
-    "custom_research_requests": [],
-    "contact_submissions": [],
-    "sample_downloads": []
-}
+db_data = {"reports": [], "payment_transactions": [], "newsletter_signups": [], 
+           "custom_research_requests": [], "contact_submissions": [], "sample_downloads": []}
 
-# Загрузка данных из файла при старте
 def load_db():
     global db_data
     if DB_FILE.exists():
-        try:
-            with open(DB_FILE, "r", encoding="utf-8") as f:
-                loaded = json.load(f)
-                # Объединяем загруженные данные с нашей структурой
-                for key in db_data:
-                    if key in loaded:
-                        db_data[key] = loaded[key]
-            print(f"Successfully loaded data from {DB_FILE}")
-        except Exception as e:
-            print(f"Error loading {DB_FILE}: {e}")
+        with open(DB_FILE, "r", encoding="utf-8") as f:
+            db_data.update(json.load(f))
 
 load_db()
 
+@app.post("/api/admin/login")
+async def admin_login(data: dict):
+    # Проверка пароля по вашей переменной
+    if data.get("password") == ADMIN_PASSWORD:
+        return {"success": True, "token": "session_active_2026"}
+    raise HTTPException(status_code=401, detail="Invalid password")
+
+# ... (остальные эндпоинты остаются прежними для работы с db_data)
 # --- ЭНДПОИНТЫ ---
 
 @app.get("/api/reports")
