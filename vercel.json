@@ -21,10 +21,6 @@
       "destination": "backend/server.py"
     },
     {
-      "source": "/admin",
-      "destination": "/frontend/build/index.html"
-    },
-    {
       "source": "/(.*)",
       "destination": "/frontend/build/$1"
     }
